@@ -1,0 +1,24 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use HrPayroll\Container;
+use HrPayroll\Infrastructure\Migrator;
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+$container = Container::fromEnvironment(dirname(__DIR__));
+$migrator = new Migrator($container->db(), dirname(__DIR__) . '/migrations');
+
+if (in_array('--fresh', $argv, true)) {
+    if ($container->config()->env === 'production') {
+        fwrite(STDERR, "Refusing to drop tables when APP_ENV=production.\n");
+        exit(1);
+    }
+    $migrator->dropAllTables();
+    echo "Dropped all tables.\n";
+}
+
+$applied = $migrator->migrate();
+echo $applied === [] ? "Nothing to migrate.\n" : 'Applied: ' . implode(', ', $applied) . "\n";
