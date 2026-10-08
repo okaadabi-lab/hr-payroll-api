@@ -1,0 +1,1262 @@
+openapi: 3.1.0
+info:
+  title: HR Payroll API
+  version: 1.0.0
+  summary: Attendance, overtime approval and monthly payroll under Indonesian rules.
+  description: |
+    Portfolio project. All data is fictional sample data.
+
+    Money is always an integer number of rupiah. Errors use RFC 7807
+    `application/problem+json`. Every response carries an `X-Request-Id` header.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://localhost:8082
+security:
+  - bearerAuth: []
+tags:
+  - name: System
+    description: Health check.
+  - name: Auth
+    description: Login, token refresh and logout.
+  - name: Users
+    description: User accounts and roles.
+  - name: Departments
+    description: Organisational units.
+  - name: Employees
+    description: Employee master data including pay.
+  - name: Attendance
+    description: Daily attendance records, self-service clock-in and CSV import.
+  - name: Overtime
+    description: Overtime requests and manager approval.
+  - name: Payroll
+    description: Monthly payroll periods and their lifecycle.
+  - name: Payslips
+    description: Calculated payslips with line items.
+  - name: Settings
+    description: Public holidays and BPJS rates used by the calculator.
+  - name: Audit
+    description: Who changed what, with before and after values.
+  - name: Integrations
+    description: Outbox for machine clients authenticated with an API key.
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [System]
+      summary: Liveness and database check
+      security: []
+      responses:
+        '200':
+          description: Service and database are up
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+        '503':
+          description: Database unreachable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      tags: [Auth]
+      summary: Exchange email and password for tokens
+      description: Failed attempts are limited per email and client IP (default 5 per 15 minutes).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Tokens issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/v1/auth/refresh:
+    post:
+      operationId: refreshToken
+      tags: [Auth]
+      summary: Rotate a refresh token
+      description: |
+        Returns a new access token and a new refresh token; the presented token
+        becomes unusable. Presenting an already-rotated token revokes every
+        token issued from the same login (`refresh_token_reused`).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshTokenBody' }
+      responses:
+        '200':
+          description: Tokens rotated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenPair' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [Auth]
+      summary: Revoke a refresh token and its family
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshTokenBody' }
+      responses:
+        '204': { description: Logged out }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/me:
+    get:
+      operationId: getMe
+      tags: [Auth]
+      summary: Current user and linked employee
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/v1/users:
+    post:
+      operationId: createUser
+      tags: [Users]
+      summary: Create a user account (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, role]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 12 }
+                role: { $ref: '#/components/schemas/Role' }
+                employee_id:
+                  type: [integer, 'null']
+                  description: Required for manager and employee roles.
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/departments:
+    get:
+      operationId: listDepartments
+      tags: [Departments]
+      summary: List departments
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - name: sort
+          in: query
+          schema: { type: string, enum: [name, -name, code, -code, created_at, -created_at], default: name }
+      responses:
+        '200': { $ref: '#/components/responses/Paginated' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    post:
+      operationId: createDepartment
+      tags: [Departments]
+      summary: Create a department (admin, hr)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DepartmentInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/departments/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      operationId: getDepartment
+      tags: [Departments]
+      summary: Get a department
+      responses:
+        '200':
+          description: Department
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      operationId: updateDepartment
+      tags: [Departments]
+      summary: Update a department (admin, hr)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DepartmentInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/employees:
+    get:
+      operationId: listEmployees
+      tags: [Employees]
+      summary: List employees in the caller's scope
+      description: |
+        Admin and HR see everyone, managers see themselves and their direct
+        reports (without salary fields), employees see only themselves.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/DepartmentId'
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, inactive] }
+        - name: manager_id
+          in: query
+          schema: { type: integer }
+        - name: sort
+          in: query
+          description: 'Fields: name, employee_number, hired_at, base_salary, created_at. Prefix with - for descending; comma separated.'
+          schema: { type: string, default: name }
+      responses:
+        '200': { $ref: '#/components/responses/Paginated' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    post:
+      operationId: createEmployee
+      tags: [Employees]
+      summary: Create an employee (admin, hr)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/employees/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      operationId: getEmployee
+      tags: [Employees]
+      summary: Get an employee in the caller's scope
+      responses:
+        '200':
+          description: Employee
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      operationId: updateEmployee
+      tags: [Employees]
+      summary: Update an employee (admin, hr)
+      description: |
+        Only provided fields change. Salary changes are written to the audit log
+        with before and after values. Any change sends calculated (not yet
+        approved) payroll periods back to draft.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmployeeInput' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/attendance:
+    get:
+      operationId: listAttendance
+      tags: [Attendance]
+      summary: List attendance records in the caller's scope
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/DepartmentId'
+        - $ref: '#/components/parameters/Period'
+        - name: employee_id
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/AttendanceStatus' }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+        - name: sort
+          in: query
+          description: 'Fields: work_date, employee, status.'
+          schema: { type: string, default: -work_date }
+      responses:
+        '200': { $ref: '#/components/responses/Paginated' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    post:
+      operationId: createAttendance
+      tags: [Attendance]
+      summary: Record attendance (admin, hr)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [employee_id, work_date]
+                  properties:
+                    employee_id: { type: integer }
+                    work_date: { type: string, format: date }
+                - $ref: '#/components/schemas/AttendanceFields'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/attendance/import:
+    post:
+      operationId: importAttendance
+      tags: [Attendance]
+      summary: Bulk import attendance from CSV (admin, hr)
+      description: |
+        Header: `employee_number,work_date,status[,clock_in,clock_out,note]`, at most
+        5000 rows and 2 MB. Every row is validated first; valid rows are inserted in a
+        single transaction and invalid rows are reported with their line number.
+        The request succeeds (200) even when some rows fail; check `failed`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, contentMediaType: text/csv }
+          text/csv:
+            schema: { type: string }
+      responses:
+        '200':
+          description: Import report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/ImportReport' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/attendance/clock-in:
+    post:
+      operationId: clockIn
+      tags: [Attendance]
+      summary: Clock in for today (self-service)
+      responses:
+        '201':
+          description: Clocked in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/attendance/clock-out:
+    post:
+      operationId: clockOut
+      tags: [Attendance]
+      summary: Clock out for today (self-service)
+      responses:
+        '200':
+          description: Clocked out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/attendance/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      operationId: getAttendance
+      tags: [Attendance]
+      summary: Get an attendance record in the caller's scope
+      responses:
+        '200':
+          description: Record
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    put:
+      operationId: updateAttendance
+      tags: [Attendance]
+      summary: Replace status, clock times and note (admin, hr)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AttendanceFields' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    delete:
+      operationId: deleteAttendance
+      tags: [Attendance]
+      summary: Delete an attendance record (admin, hr)
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/overtime-requests:
+    get:
+      operationId: listOvertimeRequests
+      tags: [Overtime]
+      summary: List overtime requests in the caller's scope
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - $ref: '#/components/parameters/DepartmentId'
+        - $ref: '#/components/parameters/Period'
+        - name: employee_id
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, rejected] }
+        - name: sort
+          in: query
+          description: 'Fields: work_date, created_at, employee.'
+          schema: { type: string, default: -work_date }
+      responses:
+        '200': { $ref: '#/components/responses/Paginated' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    post:
+      operationId: submitOvertimeRequest
+      tags: [Overtime]
+      summary: Submit an overtime request
+      description: |
+        Employees submit for themselves; admin and HR may pass `employee_id`.
+        Limits (PP 35/2021): workday overtime at most 4 hours per day and 18 hours
+        per ISO week; rest-day and public-holiday overtime at most 12 hours per day.
+        Pending and approved requests count towards the limits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [work_date, hours, reason]
+              properties:
+                employee_id: { type: integer }
+                work_date: { type: string, format: date }
+                hours: { type: number, multipleOf: 0.5, exclusiveMinimum: 0 }
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        '201':
+          description: Submitted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/overtime-requests/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      operationId: getOvertimeRequest
+      tags: [Overtime]
+      summary: Get an overtime request in the caller's scope
+      responses:
+        '200':
+          description: Request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/overtime-requests/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      operationId: approveOvertimeRequest
+      tags: [Overtime]
+      summary: Approve (direct manager, or admin)
+      description: Nobody can decide on their own request (`self_approval`); managers only on direct reports (`out_of_scope`).
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecisionBody' }
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/overtime-requests/{id}/reject:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      operationId: rejectOvertimeRequest
+      tags: [Overtime]
+      summary: Reject (direct manager, or admin)
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecisionBody' }
+      responses:
+        '200':
+          description: Rejected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/payroll-periods:
+    get:
+      operationId: listPayrollPeriods
+      tags: [Payroll]
+      summary: List payroll periods (admin, hr)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/PeriodStatus' }
+        - name: year
+          in: query
+          schema: { type: integer }
+        - name: sort
+          in: query
+          description: 'Fields: period, status, created_at.'
+          schema: { type: string, default: -period }
+      responses:
+        '200': { $ref: '#/components/responses/Paginated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      operationId: createPayrollPeriod
+      tags: [Payroll]
+      summary: Open a payroll period in draft (admin, hr)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [period]
+              properties:
+                period: { type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$', examples: ['2026-08'] }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/payroll-periods/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      operationId: getPayrollPeriod
+      tags: [Payroll]
+      summary: Get a period with totals (admin, hr)
+      responses:
+        '200':
+          description: Period
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/payroll-periods/{id}/calculate:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      operationId: calculatePayrollPeriod
+      tags: [Payroll]
+      summary: Calculate or recalculate payslips (admin, hr)
+      description: |
+        Idempotent per user and `Idempotency-Key`. Replaying the same key with the
+        same body returns the stored response with `Idempotent-Replayed: true`;
+        the same key with a different body (or path) returns 422. Allowed while the
+        period is draft or calculated.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, minLength: 8, maxLength: 255 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string, maxLength: 255 }
+      responses:
+        '200':
+          description: Calculated (or replayed)
+          headers:
+            Idempotent-Replayed:
+              schema: { type: string, enum: ['true', 'false'] }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/payroll-periods/{id}/approve:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      operationId: approvePayrollPeriod
+      tags: [Payroll]
+      summary: Approve and lock a calculated period (admin, not the calculator)
+      description: Writes one `payslip.published` outbox event per payslip in the same transaction.
+      responses:
+        '200':
+          description: Approved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/payroll-periods/{id}/mark-paid:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    post:
+      operationId: markPayrollPeriodPaid
+      tags: [Payroll]
+      summary: Mark an approved period as paid (admin)
+      description: Writes one `payroll.paid` outbox event per payslip in the same transaction.
+      responses:
+        '200':
+          description: Paid
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/payroll-periods/{id}/payslips:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      operationId: listPeriodPayslips
+      tags: [Payroll]
+      summary: Payslips of a period (admin, hr)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Search'
+        - name: department
+          in: query
+          description: Department name as stored on the payslip.
+          schema: { type: string }
+        - name: sort
+          in: query
+          description: 'Fields: employee, net_pay, period, employee_number.'
+          schema: { type: string, default: employee }
+      responses:
+        '200': { $ref: '#/components/responses/Paginated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/payslips:
+    get:
+      operationId: listPayslips
+      tags: [Payslips]
+      summary: Own payslips (everyone) or all payslips (admin, hr)
+      description: Non-HR users only see their own payslips from approved or paid periods.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - $ref: '#/components/parameters/Period'
+        - $ref: '#/components/parameters/Search'
+        - name: sort
+          in: query
+          schema: { type: string, default: -period }
+      responses:
+        '200': { $ref: '#/components/responses/Paginated' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/payslips/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    get:
+      operationId: getPayslip
+      tags: [Payslips]
+      summary: Payslip with line items
+      description: Other people's payslips return 404, not 403, so their existence is not revealed.
+      responses:
+        '200':
+          description: Payslip
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/Payslip' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/v1/holidays:
+    get:
+      operationId: listHolidays
+      tags: [Settings]
+      summary: List public holidays
+      parameters:
+        - name: year
+          in: query
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Holidays
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataList' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+    post:
+      operationId: createHoliday
+      tags: [Settings]
+      summary: Add a public holiday (admin, hr)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [holiday_date, name]
+              properties:
+                holiday_date: { type: string, format: date }
+                name: { type: string, maxLength: 150 }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/holidays/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Id'
+    delete:
+      operationId: deleteHoliday
+      tags: [Settings]
+      summary: Remove a public holiday (admin, hr)
+      responses:
+        '204': { description: Deleted }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/v1/bpjs-settings:
+    get:
+      operationId: listBpjsSettings
+      tags: [Settings]
+      summary: BPJS rate history (admin, hr)
+      responses:
+        '200':
+          description: All settings, newest first per program
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataList' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      operationId: createBpjsSetting
+      tags: [Settings]
+      summary: Add a BPJS rate effective from a month (admin)
+      description: Settings are append-only. Rejected with 409 if it would change an approved or paid period.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [program, employee_rate_bp, employer_rate_bp, effective_from]
+              properties:
+                program: { type: string, enum: [kesehatan, jht, jp, jkk, jkm] }
+                employee_rate_bp: { type: integer, minimum: 0, maximum: 10000, description: Basis points (100 = 1%) }
+                employer_rate_bp: { type: integer, minimum: 0, maximum: 10000 }
+                wage_cap: { type: [integer, 'null'], minimum: 1, description: Rupiah }
+                effective_from: { type: string, format: date, description: First day of a month }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataObject' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags: [Audit]
+      summary: Audit trail (admin)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: entity_type
+          in: query
+          schema: { type: string }
+        - name: entity_id
+          in: query
+          schema: { type: integer }
+        - name: action
+          in: query
+          schema: { type: string, examples: [employee.salary_changed, payroll.approved] }
+        - name: actor_user_id
+          in: query
+          schema: { type: integer }
+        - name: sort
+          in: query
+          schema: { type: string, default: -created_at }
+      responses:
+        '200': { $ref: '#/components/responses/Paginated' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/v1/integrations/outbox:
+    get:
+      operationId: listOutboxEvents
+      tags: [Integrations]
+      summary: Unacknowledged outbox events (API key with outbox:read)
+      description: See docs/integrations.md for the consumer contract.
+      security:
+        - apiKey: []
+      parameters:
+        - name: after
+          in: query
+          description: Return events with id greater than this cursor.
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+      responses:
+        '200':
+          description: Events, oldest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/OutboxEvent' }
+                  meta:
+                    type: object
+                    properties:
+                      next_after: { type: integer }
+                      pending_total: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+  /api/v1/integrations/outbox/ack:
+    post:
+      operationId: ackOutboxEvents
+      tags: [Integrations]
+      summary: Acknowledge processed events
+      security:
+        - apiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Ack result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      acked: { type: array, items: { type: integer } }
+                      already_acked: { type: array, items: { type: integer } }
+                      unknown: { type: array, items: { type: integer } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+    Search:
+      name: search
+      in: query
+      description: Case-insensitive substring match on the name.
+      schema: { type: string }
+    DepartmentId:
+      name: department_id
+      in: query
+      schema: { type: integer }
+    Period:
+      name: period
+      in: query
+      schema: { type: string, pattern: '^[0-9]{4}-(0[1-9]|1[0-2])$' }
+
+  responses:
+    Paginated:
+      description: A page of results
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/PaginatedList' }
+    BadRequest:
+      description: Malformed request
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unauthorized:
+      description: Missing or invalid credentials
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Forbidden:
+      description: Authenticated but not allowed
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: Conflicts with current state (duplicate, invalid transition, locked period)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ValidationFailed:
+      description: Invalid input; see `errors`
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    TooManyRequests:
+      description: Rate limited; see Retry-After
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, detail, code]
+      properties:
+        type: { type: string, examples: ['urn:hr-payroll:problem:validation_failed'] }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        code: { type: string, description: Stable machine-readable error code }
+        request_id: { type: [string, 'null'] }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: { type: string }
+              message: { type: string }
+
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, unavailable] }
+        checks:
+          type: object
+          properties:
+            database: { type: string, enum: [ok, down] }
+
+    TokenPair:
+      type: object
+      properties:
+        token_type: { type: string, const: Bearer }
+        access_token: { type: string }
+        expires_in: { type: integer, examples: [900] }
+        refresh_token: { type: string }
+        refresh_expires_in: { type: integer }
+        user:
+          type: object
+          properties:
+            id: { type: integer }
+            role: { $ref: '#/components/schemas/Role' }
+            employee_id: { type: [integer, 'null'] }
+
+    RefreshTokenBody:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token: { type: string }
+
+    Role:
+      type: string
+      enum: [admin, hr, manager, employee]
+
+    AttendanceStatus:
+      type: string
+      enum: [present, leave, sick, absent]
+
+    PeriodStatus:
+      type: string
+      enum: [draft, calculated, approved, paid]
+
+    DataObject:
+      type: object
+      properties:
+        data: { type: object }
+
+    DataList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { type: object }
+
+    PaginatedList:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { type: object }
+        meta:
+          type: object
+          properties:
+            page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+            total_pages: { type: integer }
+        links:
+          type: object
+          properties:
+            self: { type: string }
+            first: { type: string }
+            prev: { type: [string, 'null'] }
+            next: { type: [string, 'null'] }
+            last: { type: string }
+
+    DepartmentInput:
+      type: object
+      properties:
+        code: { type: string, maxLength: 20 }
+        name: { type: string, maxLength: 100 }
+
+    EmployeeInput:
+      type: object
+      description: All fields are required on create except phone, manager_id, fixed_allowances and status.
+      properties:
+        employee_number: { type: string, maxLength: 20 }
+        full_name: { type: string, maxLength: 150 }
+        email: { type: string, format: email }
+        phone: { type: [string, 'null'], pattern: '^\+?[0-9]{6,19}$' }
+        position: { type: string, maxLength: 100 }
+        department_id: { type: integer }
+        manager_id: { type: [integer, 'null'] }
+        base_salary: { type: integer, minimum: 0, description: Rupiah }
+        fixed_allowances: { type: integer, minimum: 0, description: Rupiah }
+        hired_at: { type: string, format: date }
+        status: { type: string, enum: [active, inactive] }
+
+    AttendanceFields:
+      type: object
+      required: [status]
+      properties:
+        status: { $ref: '#/components/schemas/AttendanceStatus' }
+        clock_in: { type: [string, 'null'], pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        clock_out: { type: [string, 'null'], pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        note: { type: [string, 'null'], maxLength: 255 }
+
+    ImportReport:
+      type: object
+      properties:
+        total_rows: { type: integer }
+        imported: { type: integer }
+        failed: { type: integer }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              line: { type: integer, description: 1-based line in the file (header is line 1) }
+              field: { type: string }
+              message: { type: string }
+
+    DecisionBody:
+      type: object
+      properties:
+        note: { type: string, maxLength: 255 }
+
+    Payslip:
+      type: object
+      properties:
+        id: { type: integer }
+        period: { type: string }
+        period_status: { $ref: '#/components/schemas/PeriodStatus' }
+        employee_id: { type: integer }
+        employee_number: { type: string }
+        employee_name: { type: string }
+        department_name: { type: string }
+        gross_pay: { type: integer }
+        total_deductions: { type: integer }
+        net_pay: { type: integer }
+        employer_contributions: { type: integer }
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              type: { type: string, enum: [earning, deduction, employer_contribution] }
+              code: { type: string, examples: [overtime_workday, bpjs_jht_employee] }
+              label: { type: string }
+              amount: { type: integer }
+              basis: { type: string }
+
+    OutboxEvent:
+      type: object
+      required: [id, type, occurred_at, payload]
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [payslip.published, payroll.paid] }
+        occurred_at: { type: string, description: 'UTC, format YYYY-MM-DD HH:MM:SS' }
+        payload:
+          type: object
+          required: [employee_id, employee_name, phone, period, net_pay, payslip_url]
+          properties:
+            employee_id: { type: integer }
+            employee_name: { type: string }
+            phone: { type: [string, 'null'] }
+            period: { type: string }
+            net_pay: { type: integer }
+            payslip_url: { type: string }
