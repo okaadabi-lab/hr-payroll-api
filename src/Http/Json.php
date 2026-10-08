@@ -42,7 +42,7 @@ final class Json
         } catch (JsonException) {
             throw new BadRequest('The request body is not valid JSON.', 'invalid_json');
         }
-        if (!is_array($decoded) || array_is_list($decoded) && $decoded !== []) {
+        if (!is_array($decoded) || (array_is_list($decoded) && $decoded !== [])) {
             throw new BadRequest('The request body must be a JSON object.', 'invalid_json');
         }
 

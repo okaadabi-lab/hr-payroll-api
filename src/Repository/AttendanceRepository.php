@@ -76,6 +76,18 @@ final class AttendanceRepository
         );
     }
 
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function findForEmployeeOnDate(int $employeeId, string $date, bool $forUpdate = false): ?array
+    {
+        return $this->db->fetchOne(
+            'SELECT id, status, clock_in, clock_out, note FROM attendance_records
+             WHERE employee_id = ? AND work_date = ?' . ($forUpdate ? ' FOR UPDATE' : ''),
+            [$employeeId, $date],
+        );
+    }
+
     public function existsFor(int $employeeId, string $date): bool
     {
         return $this->db->fetchOne(

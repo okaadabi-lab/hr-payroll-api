@@ -165,11 +165,7 @@ final class AttendanceService
 
         return $this->db->transactional(function () use ($actor, $employeeId, $date, $now): array {
             $this->periodLock->assertWritable($actor, $date);
-            $record = $this->db->fetchOne(
-                'SELECT id, status, clock_in, clock_out, note FROM attendance_records
-                 WHERE employee_id = ? AND work_date = ? FOR UPDATE',
-                [$employeeId, $date],
-            );
+            $record = $this->attendance->findForEmployeeOnDate($employeeId, $date, forUpdate: true);
             if ($record === null || $record['clock_in'] === null) {
                 throw new Conflict('You have not clocked in today.', 'not_clocked_in');
             }
