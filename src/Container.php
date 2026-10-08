@@ -76,13 +76,22 @@ final class Container
         $this->requestContext = new RequestContext();
     }
 
-    public static function fromEnvironment(string $rootDir): self
+    public static function fromEnvironment(string $rootDir, Clock $clock = new SystemClock()): self
+    {
+        return new self(Config::fromEnvironment(self::environment($rootDir)), $clock);
+    }
+
+    /**
+     * .env values (if the file exists) overlaid by real environment variables,
+     * so variables set by the shell, CI or PHPUnit always win.
+     *
+     * @return array<string, mixed>
+     */
+    public static function environment(string $rootDir): array
     {
         Dotenv::createImmutable($rootDir)->safeLoad();
-        $processEnv = getenv();
 
-        // Variables set by the shell or PHPUnit win over .env.
-        return new self(Config::fromEnvironment(array_merge($_ENV, $processEnv)));
+        return array_merge($_ENV, getenv());
     }
 
     /**
