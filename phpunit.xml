@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         cacheDirectory=".phpunit.cache"
+         colors="true"
+         failOnRisky="true"
+         failOnWarning="true"
+         executionOrder="default">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+    <php>
+        <env name="APP_ENV" value="test" force="true"/>
+        <env name="APP_DEBUG" value="false" force="true"/>
+        <env name="APP_URL" value="http://localhost:8082" force="true"/>
+        <env name="APP_TIMEZONE" value="Asia/Jakarta" force="true"/>
+        <env name="LOG_LEVEL" value="emergency" force="true"/>
+        <env name="DB_DATABASE" value="hr_payroll_test" force="true"/>
+        <env name="JWT_SECRET" value="test-secret-test-secret-test-secret-0123456789" force="true"/>
+        <env name="JWT_ISSUER" value="hr-payroll-api" force="true"/>
+        <env name="ACCESS_TOKEN_TTL" value="900" force="true"/>
+        <env name="REFRESH_TOKEN_TTL" value="2592000" force="true"/>
+        <env name="LOGIN_MAX_ATTEMPTS" value="5" force="true"/>
+        <env name="LOGIN_WINDOW_SECONDS" value="900" force="true"/>
+    </php>
+</phpunit>
