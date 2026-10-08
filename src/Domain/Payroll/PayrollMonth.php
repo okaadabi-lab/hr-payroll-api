@@ -26,11 +26,6 @@ final class PayrollMonth
         return new self($firstDay);
     }
 
-    public static function containing(string $date): self
-    {
-        return self::fromString(substr($date, 0, 7));
-    }
-
     public function firstDay(): string
     {
         return $this->firstDay->format('Y-m-d');

@@ -68,7 +68,6 @@ final class PayslipService
                 throw new NotFound('Payslip not found.');
             }
         }
-        unset($payslip['manager_id']);
 
         return $payslip;
     }

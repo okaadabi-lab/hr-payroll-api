@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace HrPayroll\Infrastructure;
 
+use HrPayroll\Repository\ApiClientRepository;
 use HrPayroll\Service\ApiKeyAuthenticator;
 
 /**
@@ -39,12 +40,7 @@ final class Seeder
     public function createApiClient(string $name, string $scopes): string
     {
         $generated = ApiKeyAuthenticator::generate();
-        $this->db->insert('api_clients', [
-            'name' => $name,
-            'key_prefix' => $generated['prefix'],
-            'key_hash' => $generated['hash'],
-            'scopes' => $scopes,
-        ]);
+        (new ApiClientRepository($this->db))->create($name, $generated['prefix'], $generated['hash'], $scopes);
 
         return $generated['key'];
     }

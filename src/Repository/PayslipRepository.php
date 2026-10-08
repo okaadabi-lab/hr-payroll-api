@@ -77,7 +77,7 @@ final class PayslipRepository
     public function find(int $id): ?array
     {
         $row = $this->db->fetchOne(
-            'SELECT ' . self::COLUMNS . ', e.manager_id FROM ' . self::FROM . ' WHERE s.id = ?',
+            'SELECT ' . self::COLUMNS . ' FROM ' . self::FROM . ' WHERE s.id = ?',
             [$id],
         );
         if ($row === null) {

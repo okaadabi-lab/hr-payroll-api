@@ -113,11 +113,6 @@ final class Container
         return $this->config;
     }
 
-    public function clock(): Clock
-    {
-        return $this->clock;
-    }
-
     public function requestContext(): RequestContext
     {
         return $this->requestContext;
