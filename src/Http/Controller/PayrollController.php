@@ -8,7 +8,7 @@ use HrPayroll\Domain\Exception\ValidationFailed;
 use HrPayroll\Domain\Payroll\PayrollMonth;
 use HrPayroll\Http\Input;
 use HrPayroll\Http\Json;
-use HrPayroll\Http\ListQuery;
+use HrPayroll\Query\ListQuery;
 use HrPayroll\Http\Paginator;
 use HrPayroll\Repository\PayrollPeriodRepository;
 use HrPayroll\Repository\PayslipRepository;

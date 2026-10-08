@@ -8,8 +8,8 @@ use HrPayroll\Auth\Principal;
 use HrPayroll\Domain\Exception\Conflict;
 use HrPayroll\Domain\Exception\NotFound;
 use HrPayroll\Domain\Role;
-use HrPayroll\Http\ListQuery;
-use HrPayroll\Http\Page;
+use HrPayroll\Query\ListQuery;
+use HrPayroll\Query\Page;
 use HrPayroll\Infrastructure\Database;
 use HrPayroll\Repository\DepartmentRepository;
 

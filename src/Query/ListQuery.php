@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace HrPayroll\Http;
+namespace HrPayroll\Query;
 
 use HrPayroll\Domain\Exception\ValidationFailed;
 

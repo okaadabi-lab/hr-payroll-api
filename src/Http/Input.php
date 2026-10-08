@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace HrPayroll\Http;
 
-use DateTimeImmutable;
+use HrPayroll\Domain\CalendarDate;
 use HrPayroll\Domain\Exception\ValidationFailed;
 
 /**
@@ -88,7 +88,7 @@ final class Input
         }
         $value = $this->data[$field];
 
-        if (!is_string($value) || !self::isDate($value)) {
+        if (!is_string($value) || !CalendarDate::isValid($value)) {
             return $this->fail($field, 'Must be a date in YYYY-MM-DD format.');
         }
 
@@ -179,13 +179,6 @@ final class Input
         if ($this->errors !== []) {
             throw new ValidationFailed($this->errors);
         }
-    }
-
-    public static function isDate(string $value): bool
-    {
-        $parsed = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
-
-        return $parsed !== false && $parsed->format('Y-m-d') === $value;
     }
 
     private function present(string $field, bool $required): bool

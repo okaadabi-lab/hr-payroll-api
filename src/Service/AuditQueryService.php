@@ -6,8 +6,8 @@ namespace HrPayroll\Service;
 
 use HrPayroll\Auth\Principal;
 use HrPayroll\Domain\Role;
-use HrPayroll\Http\ListQuery;
-use HrPayroll\Http\Page;
+use HrPayroll\Query\ListQuery;
+use HrPayroll\Query\Page;
 use HrPayroll\Repository\AuditLogRepository;
 
 final class AuditQueryService

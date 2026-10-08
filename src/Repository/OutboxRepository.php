@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace HrPayroll\Repository;
 
-use HrPayroll\Http\Json;
 use HrPayroll\Infrastructure\Database;
+use HrPayroll\Infrastructure\JsonCodec;
 
 final class OutboxRepository
 {
@@ -27,7 +27,7 @@ final class OutboxRepository
             'event_type' => $type,
             'aggregate_type' => $aggregateType,
             'aggregate_id' => $aggregateId,
-            'payload' => Json::encode($payload),
+            'payload' => JsonCodec::encode($payload),
             'occurred_at' => $occurredAt,
         ]);
     }

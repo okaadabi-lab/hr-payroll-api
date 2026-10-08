@@ -6,7 +6,7 @@ namespace HrPayroll\Http\Controller;
 
 use HrPayroll\Http\Input;
 use HrPayroll\Http\Json;
-use HrPayroll\Http\ListQuery;
+use HrPayroll\Query\ListQuery;
 use HrPayroll\Http\Paginator;
 use HrPayroll\Repository\DepartmentRepository;
 use HrPayroll\Service\DepartmentService;

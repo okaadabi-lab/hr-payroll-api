@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace HrPayroll\Http\Controller;
 
-use HrPayroll\Http\ListQuery;
+use HrPayroll\Query\ListQuery;
 use HrPayroll\Http\Paginator;
 use HrPayroll\Repository\AuditLogRepository;
 use HrPayroll\Service\AuditQueryService;

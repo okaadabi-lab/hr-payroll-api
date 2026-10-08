@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace HrPayroll\Service;
 
+use HrPayroll\Domain\CalendarDate;
 use HrPayroll\Auth\Principal;
 use HrPayroll\Domain\AttendanceStatus;
 use HrPayroll\Domain\Exception\BadRequest;
 use HrPayroll\Domain\Exception\Conflict;
 use HrPayroll\Domain\Role;
-use HrPayroll\Http\Input;
 use HrPayroll\Infrastructure\Database;
 use HrPayroll\Repository\AttendanceRepository;
 use HrPayroll\Repository\EmployeeRepository;
@@ -189,7 +189,7 @@ final class AttendanceImportService
             }
         }
 
-        if (!Input::isDate($row['work_date'])) {
+        if (!CalendarDate::isValid($row['work_date'])) {
             $errors[] = ['field' => 'work_date', 'message' => 'Must be a date in YYYY-MM-DD format.'];
         }
         if (AttendanceStatus::tryFrom($row['status']) === null) {

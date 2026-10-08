@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace HrPayroll\Service;
 
+use HrPayroll\Domain\CalendarDate;
 use HrPayroll\Domain\Exception\ValidationFailed;
 use HrPayroll\Domain\Payroll\PayrollMonth;
-use HrPayroll\Http\Input;
-use HrPayroll\Http\ListQuery;
+use HrPayroll\Query\ListQuery;
 use InvalidArgumentException;
 
 /**
@@ -35,7 +35,7 @@ final class PeriodRange
             if ($value === null) {
                 continue;
             }
-            if (!Input::isDate($value)) {
+            if (!CalendarDate::isValid($value)) {
                 throw ValidationFailed::single($bound, 'Must be a date in YYYY-MM-DD format.');
             }
             $range[$bound] = $value;

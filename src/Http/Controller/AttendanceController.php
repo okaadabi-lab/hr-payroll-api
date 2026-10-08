@@ -8,7 +8,7 @@ use HrPayroll\Domain\AttendanceStatus;
 use HrPayroll\Domain\Exception\BadRequest;
 use HrPayroll\Http\Input;
 use HrPayroll\Http\Json;
-use HrPayroll\Http\ListQuery;
+use HrPayroll\Query\ListQuery;
 use HrPayroll\Http\Paginator;
 use HrPayroll\Repository\AttendanceRepository;
 use HrPayroll\Service\AttendanceImportService;

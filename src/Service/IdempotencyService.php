@@ -8,9 +8,9 @@ use HrPayroll\Auth\Principal;
 use HrPayroll\Domain\Exception\BadRequest;
 use HrPayroll\Domain\Exception\Conflict;
 use HrPayroll\Domain\Exception\ValidationFailed;
-use HrPayroll\Http\Json;
 use HrPayroll\Infrastructure\Clock;
 use HrPayroll\Infrastructure\Database;
+use HrPayroll\Infrastructure\JsonCodec;
 use HrPayroll\Repository\IdempotencyRepository;
 use PDOException;
 
@@ -33,7 +33,7 @@ final class IdempotencyService
 
     public static function requestHash(string $method, string $path, mixed $body): string
     {
-        return hash('sha256', $method . ' ' . $path . "\n" . Json::encode(['body' => self::canonical($body)]));
+        return hash('sha256', $method . ' ' . $path . "\n" . JsonCodec::encode(['body' => self::canonical($body)]));
     }
 
     /**
@@ -61,7 +61,7 @@ final class IdempotencyService
                     throw $e;
                 }
                 [$status, $body] = $operation();
-                $this->keys->complete($actor->userId, $key, $status, Json::encode($body));
+                $this->keys->complete($actor->userId, $key, $status, JsonCodec::encode($body));
 
                 return ['status' => $status, 'body' => $body, 'replayed' => false];
             });

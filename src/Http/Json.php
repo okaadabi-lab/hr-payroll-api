@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace HrPayroll\Http;
 
 use HrPayroll\Domain\Exception\BadRequest;
+use HrPayroll\Infrastructure\JsonCodec;
 use JsonException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 
 final class Json
 {
-    private const FLAGS = JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
-
     /**
      * @param array<mixed> $data
      */
@@ -22,17 +21,9 @@ final class Json
         int $status = 200,
         string $contentType = 'application/json',
     ): ResponseInterface {
-        $response->getBody()->write(self::encode($data));
+        $response->getBody()->write(JsonCodec::encode($data));
 
         return $response->withStatus($status)->withHeader('Content-Type', $contentType);
-    }
-
-    /**
-     * @param array<mixed> $data
-     */
-    public static function encode(array $data): string
-    {
-        return json_encode($data, self::FLAGS);
     }
 
     /**

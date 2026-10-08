@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace HrPayroll\Http;
 
+use HrPayroll\Query\ListQuery;
+use HrPayroll\Query\Page;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 

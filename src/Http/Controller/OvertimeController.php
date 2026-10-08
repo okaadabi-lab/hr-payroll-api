@@ -7,7 +7,7 @@ namespace HrPayroll\Http\Controller;
 use HrPayroll\Domain\OvertimeStatus;
 use HrPayroll\Http\Input;
 use HrPayroll\Http\Json;
-use HrPayroll\Http\ListQuery;
+use HrPayroll\Query\ListQuery;
 use HrPayroll\Http\Paginator;
 use HrPayroll\Repository\OvertimeRepository;
 use HrPayroll\Service\OvertimeService;

@@ -9,8 +9,8 @@ use HrPayroll\Auth\Principal;
 use HrPayroll\Domain\Exception\NotFound;
 use HrPayroll\Domain\PeriodStatus;
 use HrPayroll\Domain\Role;
-use HrPayroll\Http\ListQuery;
-use HrPayroll\Http\Page;
+use HrPayroll\Query\ListQuery;
+use HrPayroll\Query\Page;
 use HrPayroll\Repository\PayrollPeriodRepository;
 use HrPayroll\Repository\PayslipRepository;
 

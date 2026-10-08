@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace HrPayroll\Repository;
 
-use HrPayroll\Http\ListQuery;
-use HrPayroll\Http\Page;
+use HrPayroll\Query\ListQuery;
+use HrPayroll\Query\Page;
 use HrPayroll\Infrastructure\Database;
 
 final class DepartmentRepository

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace HrPayroll\Repository;
 
-use HrPayroll\Http\Json;
-use HrPayroll\Http\ListQuery;
-use HrPayroll\Http\Page;
+use HrPayroll\Query\ListQuery;
+use HrPayroll\Query\Page;
 use HrPayroll\Infrastructure\Database;
+use HrPayroll\Infrastructure\JsonCodec;
 
 final class AuditLogRepository
 {
@@ -37,8 +37,8 @@ final class AuditLogRepository
             'action' => $action,
             'entity_type' => $entityType,
             'entity_id' => $entityId,
-            'before_data' => $before === null ? null : Json::encode($before),
-            'after_data' => $after === null ? null : Json::encode($after),
+            'before_data' => $before === null ? null : JsonCodec::encode($before),
+            'after_data' => $after === null ? null : JsonCodec::encode($after),
             'ip' => $ip,
             'created_at' => $at,
         ]);

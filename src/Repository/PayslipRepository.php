@@ -6,8 +6,8 @@ namespace HrPayroll\Repository;
 
 use HrPayroll\Auth\EmployeeScope;
 use HrPayroll\Domain\Payroll\Payslip;
-use HrPayroll\Http\ListQuery;
-use HrPayroll\Http\Page;
+use HrPayroll\Query\ListQuery;
+use HrPayroll\Query\Page;
 use HrPayroll\Infrastructure\Database;
 
 final class PayslipRepository
