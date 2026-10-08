@@ -1,0 +1,31 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use HrPayroll\Container;
+use HrPayroll\Infrastructure\Seeder;
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+$container = Container::fromEnvironment(dirname(__DIR__));
+if ($container->config()->env === 'production') {
+    fwrite(STDERR, "Refusing to seed sample data when APP_ENV=production.\n");
+    exit(1);
+}
+
+$db = $container->db();
+if ($db->fetchInt('SELECT COUNT(*) FROM users') > 0) {
+    fwrite(STDERR, "Database already has users. Run `php bin/migrate --fresh` first.\n");
+    exit(1);
+}
+
+$seeder = new Seeder($db);
+$seeder->run();
+$apiKey = $seeder->createApiClient('n8n-omnichannel-inbox', 'outbox:read');
+
+echo "Seeded fictional sample data. Every user's password is " . Seeder::PASSWORD . "\n";
+echo "  admin@example.test, admin2@example.test (admin), hr@example.test (hr)\n";
+echo "  dina.kartika@example.test, raka.pratama@example.test (manager)\n";
+echo "  budi.santoso@example.test, sari.wulandari@example.test, nina.lestari@example.test (employee)\n";
+echo "Outbox API key (store it now, it is not shown again):\n  {$apiKey}\n";
