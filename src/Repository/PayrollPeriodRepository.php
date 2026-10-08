@@ -16,7 +16,8 @@ final class PayrollPeriodRepository
     private const COLUMNS = 'p.id, p.period, p.status, p.created_by, p.calculated_by, p.calculated_at,
         p.calculation_note, p.approved_by, p.approved_at, p.paid_by, p.paid_at, p.created_at, p.updated_at,
         (SELECT COUNT(*) FROM payslips s WHERE s.payroll_period_id = p.id) AS payslip_count,
-        (SELECT COALESCE(SUM(s.net_pay), 0) FROM payslips s WHERE s.payroll_period_id = p.id) AS total_net_pay';
+        (SELECT CAST(COALESCE(SUM(s.net_pay), 0) AS SIGNED) FROM payslips s
+         WHERE s.payroll_period_id = p.id) AS total_net_pay';
 
     public function __construct(private readonly Database $db)
     {

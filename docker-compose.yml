@@ -1,0 +1,39 @@
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hr_payroll
+      MYSQL_USER: hr_payroll
+      MYSQL_PASSWORD: secret
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql-init.sql:/docker-entrypoint-initdb.d/01-test-database.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8082
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_DATABASE: hr_payroll
+      DB_USERNAME: hr_payroll
+      DB_PASSWORD: secret
+      JWT_SECRET: local-development-secret-change-me-0123456789
+    ports:
+      - "8082:8082"
+
+volumes:
+  mysql-data:

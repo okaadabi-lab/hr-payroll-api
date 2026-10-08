@@ -17,6 +17,7 @@ final class PayrollLifecycleTest extends PayrollTestCase
         self::assertSame('calculated', $period['status']);
         self::assertSame($this->ids['user_hr'], $period['calculated_by']);
         self::assertSame(6, $period['totals']['employees']);
+        self::assertSame($period['totals']['net_pay'], $period['total_net_pay'], 'money is always an integer');
 
         $budi = $this->payslipFor($periodId, $this->ids['emp_budi']);
         self::assertSame(10_465_318, $budi['gross_pay']);
