@@ -1,5 +1,5 @@
 {
-    "name": "okasamdya/hr-payroll-api",
+    "name": "oka-samdya-adabi/hr-payroll-api",
     "description": "REST API for attendance, overtime approval and monthly payroll runs under Indonesian rules.",
     "type": "project",
     "license": "MIT",

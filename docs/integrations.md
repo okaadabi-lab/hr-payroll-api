@@ -7,7 +7,7 @@ committed or none of it is, so a consumer can never see an event for an approval
 rolled back, and an approval can never be committed without its events.
 
 Consumers pull events over HTTP and acknowledge them. The intended consumer is the n8n
-project [`omnichannel-inbox-automation`](../../omnichannel-inbox-automation), which sends each
+project `omnichannel-inbox-automation` (a separate repository), which sends each
 employee a WhatsApp or email message when their payslip is published and when salary is paid.
 
 ## Authentication
