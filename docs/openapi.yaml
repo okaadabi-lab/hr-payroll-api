@@ -1249,7 +1249,7 @@ components:
       properties:
         id: { type: integer }
         type: { type: string, enum: [payslip.published, payroll.paid] }
-        occurred_at: { type: string, description: 'UTC, format YYYY-MM-DD HH:MM:SS' }
+        occurred_at: { type: string, format: date-time, examples: ['2026-09-30T03:15:00Z'] }
         payload:
           type: object
           required: [employee_id, employee_name, phone, period, net_pay, payslip_url]

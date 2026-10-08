@@ -57,14 +57,17 @@ final class AttendanceImportService
             $valid = [];
             $seen = [];
             $employeeIds = [];
+            $lockedMonths = [];
             foreach ($rows as $line => $row) {
                 $rowErrors = $this->validateRow($row, $employeeIds);
                 if ($rowErrors === []) {
                     $employeeId = $employeeIds[$row['employee_number']];
                     $key = $employeeId . '|' . $row['work_date'];
+                    $month = substr($row['work_date'], 0, 7);
+                    $lockedMonths[$month] ??= $this->periodLock->isLocked($row['work_date']);
                     if (isset($seen[$key])) {
                         $rowErrors[] = ['field' => 'work_date', 'message' => "Duplicate of line {$seen[$key]}."];
-                    } elseif ($this->periodLock->isLocked($row['work_date'])) {
+                    } elseif ($lockedMonths[$month]) {
                         $rowErrors[] = ['field' => 'work_date', 'message' => 'Payroll period is locked.'];
                     } elseif ($this->attendance->existsFor($employeeId, $row['work_date'])) {
                         $rowErrors[] = ['field' => 'work_date', 'message' => 'Attendance already exists.'];

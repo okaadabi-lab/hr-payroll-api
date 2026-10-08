@@ -105,7 +105,7 @@ final class EmployeeService
             }
             $this->employees->update($id, $changed);
             if ($changed !== []) {
-                $this->periodLock->invalidateCalculatedFrom($actor, '0000-01', 'employee data changed');
+                $this->periodLock->invalidateAllCalculated($actor, 'employee data changed');
             }
 
             $salaryBefore = array_intersect_key($current, array_flip(self::SALARY_FIELDS));

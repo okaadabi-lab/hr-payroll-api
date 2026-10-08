@@ -58,8 +58,16 @@ final class PeriodLock
     }
 
     /**
-     * Employee master data and BPJS settings feed every open period, not one
-     * month, so their changes reset all calculated periods from $fromMonth on.
+     * Employee master data is read by every open period, so a change resets
+     * all calculated periods.
+     */
+    public function invalidateAllCalculated(Principal $actor, string $reason): void
+    {
+        $this->invalidateCalculatedFrom($actor, '0000-01', $reason);
+    }
+
+    /**
+     * New employees and BPJS settings affect periods from a given month on.
      */
     public function invalidateCalculatedFrom(Principal $actor, string $fromMonth, string $reason): void
     {

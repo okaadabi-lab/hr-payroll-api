@@ -42,10 +42,12 @@ final class OutboxTest extends PayrollTestCase
         $event = $body['data'][0];
         self::assertSame(['id', 'type', 'occurred_at', 'payload'], array_keys($event));
         self::assertSame(PayrollService::EVENT_PAYSLIP_PUBLISHED, $event['type']);
-        self::assertSame(
+        // MySQL's JSON type may reorder keys; the contract is about names, not order.
+        self::assertEqualsCanonicalizing(
             ['employee_id', 'employee_name', 'phone', 'period', 'net_pay', 'payslip_url'],
             array_keys($event['payload']),
         );
+        self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $event['occurred_at']);
         $budi = array_values(array_filter(
             $body['data'],
             fn (array $event): bool => $event['payload']['employee_id'] === $this->ids['emp_budi'],
@@ -122,7 +124,9 @@ final class OutboxTest extends PayrollTestCase
     {
         $this->assertStatus(401, $this->request('GET', '/api/v1/integrations/outbox'));
         $this->assertStatus(401, $this->outbox('', 'hrp_000000000000_' . str_repeat('0', 48)));
-        $this->assertStatus(401, $this->outbox('', substr($this->apiKey, 0, -1) . 'f'));
+        $lastChar = substr($this->apiKey, -1);
+        $tampered = substr($this->apiKey, 0, -1) . ($lastChar === '0' ? '1' : '0');
+        $this->assertStatus(401, $this->outbox('', $tampered), 'same prefix, wrong secret');
         $this->assertStatus(401, $this->get('/api/v1/integrations/outbox', 'admin'), 'JWTs are not accepted');
 
         $seeder = new Seeder($this->db);

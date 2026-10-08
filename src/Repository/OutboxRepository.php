@@ -48,7 +48,7 @@ final class OutboxRepository
         return array_map(static fn (array $row): array => [
             'id' => (int) $row['id'],
             'type' => (string) $row['event_type'],
-            'occurred_at' => (string) $row['occurred_at'],
+            'occurred_at' => str_replace(' ', 'T', (string) $row['occurred_at']) . 'Z',
             'payload' => json_decode((string) $row['payload'], true),
         ], $rows);
     }
