@@ -4,7 +4,7 @@ REST API for attendance, overtime approval and monthly payroll runs under Indone
 (PP 35/2021 overtime multipliers, BPJS contributions), with period locking, an audit trail
 and a transactional outbox for integrations.
 
-[![CI](https://github.com/__GITHUB_USER__/hr-payroll-api/actions/workflows/ci.yml/badge.svg)](https://github.com/__GITHUB_USER__/hr-payroll-api/actions/workflows/ci.yml)
+[![CI](https://github.com/okaadabi-lab/hr-payroll-api/actions/workflows/ci.yml/badge.svg)](https://github.com/okaadabi-lab/hr-payroll-api/actions/workflows/ci.yml)
 
 > Portfolio project. All data in this repository is fictional sample data.
 
@@ -13,7 +13,7 @@ and a transactional outbox for integrations.
 A small service business pays its staff monthly. Attendance is recorded daily, overtime has to
 be approved by the employee's manager and must respect legal limits, and once payroll is
 approved nobody should be able to change the inputs that produced it. Other systems (here the
-n8n workflows in [omnichannel-inbox-automation](https://github.com/__GITHUB_USER__/omnichannel-inbox-automation),
+n8n workflows in [omnichannel-inbox-automation](https://github.com/okaadabi-lab/omnichannel-inbox-automation),
 which message employees) need to know when payslips are published, without the payroll API
 calling them directly.
 
@@ -235,6 +235,6 @@ formula, with a worked example, is in [docs/payroll-rules.md](docs/payroll-rules
 
 ## Part of a portfolio
 
-[omnichannel-inbox-automation](https://github.com/__GITHUB_USER__/omnichannel-inbox-automation)
+[omnichannel-inbox-automation](https://github.com/okaadabi-lab/omnichannel-inbox-automation)
 polls this API's outbox and sends each employee a WhatsApp template message when a payslip is
 published or salary is paid. That is the only runtime integration; the API does not depend on it.
