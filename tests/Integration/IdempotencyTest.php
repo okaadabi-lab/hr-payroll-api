@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace HrPayroll\Tests\Integration;
 
+use HrPayroll\Infrastructure\Database;
 use HrPayroll\Service\IdempotencyService;
 
 final class IdempotencyTest extends PayrollTestCase
@@ -24,6 +25,64 @@ final class IdempotencyTest extends PayrollTestCase
         self::assertSame($this->json($first), $this->json($replay));
         self::assertSame(1, $this->auditCount('payroll.calculated'));
         self::assertSame(0, $this->auditCount('payroll.recalculated'));
+    }
+
+    public function testConcurrentDuplicatesRunTheCalculationOnce(): void
+    {
+        $periodId = $this->createPeriod('2026-08');
+        $token = $this->tokenFor('hr');
+
+        // A separate connection holds the period row, so the first request stops right
+        // after reserving its key and the duplicate has to wait on that key.
+        $blocker = Database::fromConfig($this->container->config());
+        $blocker->pdo()->beginTransaction();
+        $blocker->fetchOne('SELECT id FROM payroll_periods WHERE id = ? FOR UPDATE', [$periodId]);
+
+        $processes = [];
+        foreach ([1, 2] as $ignored) {
+            $processes[] = $this->startCalculation($periodId, $token, 'concurrent-key-01');
+            usleep(300_000);
+        }
+        $blocker->pdo()->commit();
+
+        $results = array_map($this->finish(...), $processes);
+        sort($results);
+        self::assertSame(['200 false', '200 true'], $results);
+        self::assertSame(1, $this->auditCount('payroll.calculated'));
+        self::assertSame(0, $this->auditCount('payroll.recalculated'));
+    }
+
+    /**
+     * @return array{0: resource, 1: resource}
+     */
+    private function startCalculation(int $periodId, string $token, string $key): array
+    {
+        $process = proc_open(
+            [
+                PHP_BINARY,
+                dirname(__DIR__) . '/Support/calculate_request.php',
+                self::NOW,
+                "/api/v1/payroll-periods/{$periodId}/calculate",
+                $token,
+                $key,
+            ],
+            [1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+        );
+        self::assertIsResource($process);
+
+        return [$process, $pipes[1]];
+    }
+
+    /**
+     * @param array{0: resource, 1: resource} $started
+     */
+    private function finish(array $started): string
+    {
+        $output = trim((string) stream_get_contents($started[1]));
+        proc_close($started[0]);
+
+        return $output;
     }
 
     public function testSameKeyWithDifferentPayloadIs422(): void

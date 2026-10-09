@@ -95,6 +95,52 @@ final class AccessControlTest extends IntegrationTestCase
         }
     }
 
+    public function testRecordsOutsideTheScopeCannotBeOpenedById(): void
+    {
+        $ninaAttendance = $this->db->insert('attendance_records', [
+            'employee_id' => $this->ids['emp_nina'],
+            'work_date' => '2026-09-08',
+            'status' => 'sick',
+        ]);
+        $ninaOvertime = $this->db->insert('overtime_requests', [
+            'employee_id' => $this->ids['emp_nina'],
+            'work_date' => '2026-09-08',
+            'minutes' => 60,
+            'reason' => 'Release',
+        ]);
+
+        // Dina manages Budi and Sari, not Nina; Budi is a colleague of Nina in another team.
+        foreach (['dina', 'budi', 'sari'] as $user) {
+            $this->assertStatus(403, $this->get("/api/v1/attendance/{$ninaAttendance}", $user), $user);
+            $this->assertStatus(403, $this->get("/api/v1/overtime-requests/{$ninaOvertime}", $user), $user);
+        }
+        $this->assertStatus(200, $this->get("/api/v1/attendance/{$ninaAttendance}", 'raka'));
+        $this->assertStatus(200, $this->get("/api/v1/overtime-requests/{$ninaOvertime}", 'raka'));
+        $this->assertStatus(200, $this->get("/api/v1/attendance/{$ninaAttendance}", 'nina'));
+
+        $this->assertStatus(403, $this->post("/api/v1/overtime-requests/{$ninaOvertime}/reject", [], 'dina'));
+        $this->assertStatus(403, $this->request('PUT', "/api/v1/attendance/{$ninaAttendance}", [
+            'status' => 'absent',
+        ], 'raka'));
+        $this->assertStatus(403, $this->request('DELETE', "/api/v1/attendance/{$ninaAttendance}", null, 'nina'));
+        $this->assertStatus(403, $this->request('PATCH', "/api/v1/employees/{$this->ids['emp_nina']}", [
+            'base_salary' => 99_000_000,
+        ], 'raka'));
+
+        self::assertSame('sick', $this->db->fetchOne(
+            'SELECT status FROM attendance_records WHERE id = ?',
+            [$ninaAttendance],
+        )['status'] ?? null);
+        self::assertSame('pending', $this->db->fetchOne(
+            'SELECT status FROM overtime_requests WHERE id = ?',
+            [$ninaOvertime],
+        )['status'] ?? null);
+        self::assertSame(12_000_000, $this->db->fetchInt(
+            'SELECT base_salary FROM employees WHERE id = ?',
+            [$this->ids['emp_nina']],
+        ));
+    }
+
     public function testEmployeeFilterCannotWidenTheScope(): void
     {
         $response = $this->get("/api/v1/employees?manager_id={$this->ids['emp_raka']}", 'dina');
