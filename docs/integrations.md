@@ -111,7 +111,7 @@ event `id`, for example by recording every id in a small table before sending. A
    from n8n credentials. While a page comes back full, request the next one with
    `after={meta.next_after}`.
 3. **Split Out** `data`.
-4. **Switch** on `type` and send the message (WhatsApp / email node).
+4. **Switch** on `type` and send the message (WhatsApp template message).
 5. **Aggregate** the ids of the messages that were sent successfully.
 6. **HTTP Request** `POST /api/v1/integrations/outbox/ack` with `{ "ids": [...] }`.
 

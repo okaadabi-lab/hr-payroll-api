@@ -31,7 +31,7 @@ sequenceDiagram
     API->>DB: INSERT outbox_events (one per payslip)
     API->>DB: COMMIT
     N->>API: GET /integrations/outbox
-    N->>N: send WhatsApp / email
+    N->>N: send WhatsApp template
     N->>API: POST /integrations/outbox/ack
 ```
 
