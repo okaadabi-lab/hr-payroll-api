@@ -128,7 +128,8 @@ final class PayrollService
             $absences = $this->attendance->absentDatesBetween($month->firstDay(), $month->lastDay());
             $overtime = $this->overtime->approvedBetween($month->firstDay(), $month->lastDay());
 
-            $this->payslips->deleteForPeriod($id);
+            $calculated = [];
+            $negative = [];
             foreach ($this->employees->activeForPayroll($month->lastDay()) as $employee) {
                 $employeeId = (int) $employee['id'];
                 $input = new EmployeePayInput(
@@ -141,7 +142,25 @@ final class PayrollService
                         $overtime[$employeeId] ?? [],
                     ),
                 );
-                $this->payslips->store($id, $this->calculator->calculate($input, $month, $calendar, $rates), [
+                $payslip = $this->calculator->calculate($input, $month, $calendar, $rates);
+                if ($payslip->netPay() < 0) {
+                    $negative[] = (string) $employee['employee_number'];
+                }
+                $calculated[] = [$payslip, $employee];
+            }
+            // Deductions above earnings (a whole month of unexcused absence plus BPJS) would
+            // produce a payslip that pays a negative amount; HR has to resolve it first.
+            if ($negative !== []) {
+                throw new Conflict(
+                    'Net pay would be negative for: ' . implode(', ', $negative)
+                    . '. Review their absences before calculating.',
+                    'negative_net_pay',
+                );
+            }
+
+            $this->payslips->deleteForPeriod($id);
+            foreach ($calculated as [$payslip, $employee]) {
+                $this->payslips->store($id, $payslip, [
                     'employee_number' => (string) $employee['employee_number'],
                     'employee_name' => (string) $employee['full_name'],
                     'department_name' => (string) $employee['department_name'],

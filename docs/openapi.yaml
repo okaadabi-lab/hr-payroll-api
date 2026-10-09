@@ -666,7 +666,8 @@ paths:
         Idempotent per user and `Idempotency-Key`. Replaying the same key with the
         same body returns the stored response with `Idempotent-Replayed: true`;
         the same key with a different body (or path) returns 422. Allowed while the
-        period is draft or calculated.
+        period is draft or calculated. Returns 409 `negative_net_pay` when deductions
+        would exceed earnings for any employee; nothing is stored in that case.
       parameters:
         - name: Idempotency-Key
           in: header

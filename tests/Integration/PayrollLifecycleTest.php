@@ -121,6 +121,38 @@ final class PayrollLifecycleTest extends PayrollTestCase
         self::assertSame(4, $this->countRows('SELECT COUNT(*) FROM payslips WHERE payroll_period_id = ?', [$periodId]));
     }
 
+    public function testNegativeNetPayBlocksCalculationAndKeepsPreviousPayslips(): void
+    {
+        $periodId = $this->createPeriod('2026-08');
+        $this->assertStatus(200, $this->calculate($periodId));
+        $before = (int) $this->db->fetchInt('SELECT COUNT(*) FROM payslips WHERE payroll_period_id = ?', [$periodId]);
+
+        // Absent on all 20 working days: the absence deduction equals the wage, so the
+        // employee BPJS shares push net pay below zero.
+        $august = new \DatePeriod(new \DateTimeImmutable('2026-08-01'), new \DateInterval('P1D'), 30);
+        foreach ($august as $day) {
+            if ((int) $day->format('N') <= 5 && $day->format('Y-m-d') !== '2026-08-17') {
+                $this->db->insert('attendance_records', [
+                    'employee_id' => $this->ids['emp_sari'],
+                    'work_date' => $day->format('Y-m-d'),
+                    'status' => 'absent',
+                ]);
+            }
+        }
+
+        $response = $this->calculate($periodId);
+        $this->assertStatus(409, $response);
+        $problem = $this->json($response);
+        self::assertSame('negative_net_pay', $problem['code']);
+        self::assertStringContainsString('EMP-003', $problem['detail']);
+        self::assertSame('calculated', $this->periodStatus($periodId));
+        self::assertSame(
+            $before,
+            $this->db->fetchInt('SELECT COUNT(*) FROM payslips WHERE payroll_period_id = ?', [$periodId]),
+        );
+        self::assertSame(0, $this->db->fetchInt('SELECT COUNT(*) FROM payslips WHERE net_pay < 0'));
+    }
+
     public function testMissingBpjsSettingsBlockCalculation(): void
     {
         $this->db->run("DELETE FROM bpjs_settings WHERE program = 'jp'");

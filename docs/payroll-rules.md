@@ -127,6 +127,11 @@ net_pay          = gross_pay - total_deductions
 employer_cost    = gross_pay + sum(employer_contribution lines)
 ```
 
+Net pay can only go below zero when deductions exceed earnings, for example an employee
+who was absent on every working day still owes their BPJS shares. The API does not carry a
+negative balance into the next month; calculation stops with 409 `negative_net_pay` and
+names the employees, so HR can review their attendance before anything is approved.
+
 ## Worked example
 
 These numbers are asserted by `PayrollCalculatorTest::testWorkedExampleAugust2026` (pure
