@@ -1,12 +1,12 @@
 # HR Payroll API
 
-[![CI](https://github.com/__GITHUB_USER__/hr-payroll-api/actions/workflows/ci.yml/badge.svg)](https://github.com/__GITHUB_USER__/hr-payroll-api/actions/workflows/ci.yml)
-
 REST API for attendance, overtime approval and monthly payroll runs under Indonesian rules
 (PP 35/2021 overtime multipliers, BPJS contributions), with period locking, an audit trail
 and a transactional outbox for integrations.
 
-Portfolio project. All data in this repository is fictional sample data.
+[![CI](https://github.com/__GITHUB_USER__/hr-payroll-api/actions/workflows/ci.yml/badge.svg)](https://github.com/__GITHUB_USER__/hr-payroll-api/actions/workflows/ci.yml)
+
+> Portfolio project. All data in this repository is fictional sample data.
 
 ## Overview
 
@@ -74,35 +74,11 @@ flowchart LR
     repo --> db[(MySQL 8)]
 ```
 
-- **Controllers** are thin: they read and validate input (`Http\Input`), call one service method
-  and shape the response.
-- **Services** own the rules and transaction boundaries. Authorisation lives here, not only in
-  routes, so every path to the data is checked the same way.
-- **Repositories** contain all SQL. Values are always bound parameters; sort columns come from
-  per-repository whitelists.
-- **Domain\Payroll** is the calculator: plain PHP objects, no database, no clock. It is the most
-  heavily tested part.
-- **Container** wires everything by hand in one file. There is no autowiring to reason about.
-
-Payroll approval, step by step:
-
-```mermaid
-sequenceDiagram
-    participant A as Admin
-    participant API as PayrollService
-    participant DB as MySQL
-    participant N as n8n
-    A->>API: POST /payroll-periods/{id}/approve
-    API->>DB: BEGIN; SELECT period FOR UPDATE
-    API->>API: status = calculated? approver != calculator?
-    API->>DB: UPDATE period SET status = approved
-    API->>DB: INSERT audit_logs
-    API->>DB: INSERT outbox_events (one per payslip)
-    API->>DB: COMMIT
-    N->>API: GET /integrations/outbox
-    N->>N: send WhatsApp / email
-    N->>API: POST /integrations/outbox/ack
-```
+Controllers validate input and call one service method. Services own the business rules,
+authorisation and transaction boundaries, so every path to the data is checked the same way.
+Repositories hold all SQL with bound parameters. The payroll calculator is plain PHP with no
+database or clock. [docs/architecture.md](docs/architecture.md) has the layer notes and the
+approval sequence (lock, audit, outbox, commit).
 
 ## Database
 
@@ -165,63 +141,19 @@ erDiagram
     }
 ```
 
-Reference tables not shown: `holidays`, `bpjs_settings` (append-only, with `effective_from`),
-`login_attempts`, `api_clients`. Constraints worth noting: unique `(employee_id, work_date)` on
-attendance, unique `(payroll_period_id, employee_id)` on payslips, a CHECK that
-`net_pay = gross_pay - total_deductions`, a CHECK that the approver differs from the calculator,
-and a CHECK limiting overtime to 12 hours per request.
-
-Payslips store a snapshot of the employee's name, number and department so an approved payslip
-does not change when master data changes later.
+Constraints carry part of the rules: one attendance record per employee and day, one payslip per
+employee and period, `net_pay = gross_pay - total_deductions`, and approver ≠ calculator are
+enforced by UNIQUE and CHECK constraints. Payslips snapshot the employee's name, number and
+department. The reference tables and the full list are in
+[docs/architecture.md](docs/architecture.md#database-constraints).
 
 ## API
 
-The full contract is in [docs/openapi.yaml](docs/openapi.yaml) (OpenAPI 3.1). A test fails if a
-route is registered in Slim but missing from the spec, or the other way round.
-
-| Area | Endpoints |
-| --- | --- |
-| Auth | `POST /auth/login`, `POST /auth/refresh`, `POST /auth/logout`, `GET /me` |
-| Master data | `/departments`, `/employees`, `POST /users`, `/holidays`, `/bpjs-settings` |
-| Attendance | `/attendance`, `POST /attendance/import`, `POST /attendance/clock-in`, `POST /attendance/clock-out` |
-| Overtime | `/overtime-requests`, `POST /overtime-requests/{id}/approve`, `.../reject` |
-| Payroll | `/payroll-periods`, `POST .../{id}/calculate`, `.../approve`, `.../mark-paid`, `GET .../{id}/payslips` |
-| Payslips | `GET /payslips`, `GET /payslips/{id}` |
-| Integrations | `GET /integrations/outbox`, `POST /integrations/outbox/ack` (API key) |
-| Ops | `GET /health`, `GET /audit-logs` |
-
-All paths except `/health` are under `/api/v1`.
-
-Example session:
-
-```bash
-TOKEN=$(curl -s -X POST localhost:8082/api/v1/auth/login \
-  -H 'Content-Type: application/json' \
-  -d '{"email":"hr@example.test","password":"Password123!"}' | jq -r .access_token)
-
-curl -s -X POST localhost:8082/api/v1/payroll-periods -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d '{"period":"2026-08"}'
-
-curl -s -X POST localhost:8082/api/v1/payroll-periods/1/calculate \
-  -H "Authorization: Bearer $TOKEN" -H 'Idempotency-Key: calc-2026-08-001'
-```
-
-An error looks like this:
-
-```json
-{
-  "type": "urn:hr-payroll:problem:validation_failed",
-  "title": "Unprocessable Content",
-  "status": 422,
-  "detail": "Overtime exceeds the limits of PP 35/2021.",
-  "instance": "/api/v1/overtime-requests",
-  "code": "validation_failed",
-  "request_id": "6f1c0d0e9a3b4f52b8f1e0c7d2a4b6e8",
-  "errors": [
-    { "field": "hours", "message": "Overtime on a workday is limited to 4 hours per day; 0 hours already requested." }
-  ]
-}
-```
+All paths except `/health` are under `/api/v1`: auth, master data, attendance, overtime, payroll
+periods, payslips, the integration outbox, health and audit logs. Errors are RFC 7807 problem
+documents with a stable `code`. The contract is [docs/openapi.yaml](docs/openapi.yaml)
+(OpenAPI 3.1), and a test fails if a Slim route and the spec disagree.
+[docs/api.md](docs/api.md) lists the endpoints with an example session.
 
 ## Getting started
 
@@ -235,37 +167,17 @@ php bin/seed                  # fictional company; prints the users and an outbo
 composer serve                # http://localhost:8082
 ```
 
-Or with Docker (MySQL 8 and the API on port 8082):
+Or with Docker (MySQL 8 and the API on port 8082; the container runs migrations on start):
 
 ```bash
 docker compose up -d
 docker compose exec app php bin/seed
 ```
 
-Seeded users all use the password `Password123!`:
-
-| Email | Role | Notes |
-| --- | --- | --- |
-| `admin@example.test`, `admin2@example.test` | admin | two admins to show segregation of duties |
-| `hr@example.test` | hr | |
-| `dina.kartika@example.test` | manager | manages Budi and Sari |
-| `raka.pratama@example.test` | manager | manages Nina |
-| `budi.santoso@example.test`, `sari.wulandari@example.test`, `nina.lestari@example.test` | employee | |
-
-### Environment variables
-
-| Variable | Purpose |
-| --- | --- |
-| `APP_ENV`, `APP_DEBUG` | `bin/seed` and `bin/migrate --fresh` refuse to run when `APP_ENV=production`. `APP_DEBUG=true` adds exception class and message to 500 responses (never the trace) |
-| `APP_URL` | Base URL used in `payslip_url` of outbox events |
-| `APP_TIMEZONE` | Company time zone (default `Asia/Jakarta`) that decides the work date and clock times of clock-in/out. `work_date` and clock times are stored as local values; timestamps such as `created_at` are UTC |
-| `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Database connection |
-| `JWT_SECRET`, `JWT_ISSUER` | HS256 signing key (32+ characters) and issuer claim |
-| `ACCESS_TOKEN_TTL`, `REFRESH_TOKEN_TTL` | Seconds; defaults 900 and 2592000 |
-| `LOGIN_MAX_ATTEMPTS`, `LOGIN_WINDOW_SECONDS` | Failed logins allowed per email + IP per window |
-| `LOG_LEVEL` | Monolog level for the JSON logs on stdout |
-
-### Tests and checks
+Seeded users all use the password `Password123!`: `admin@example.test` and
+`admin2@example.test` (two admins, for segregation of duties), `hr@example.test`, managers
+`dina.kartika@example.test` and `raka.pratama@example.test`, and three employees.
+[docs/operations.md](docs/operations.md) lists them all, with every environment variable.
 
 The integration tests need an empty database whose name ends in `_test` (the bootstrap refuses
 anything else). It is dropped and migrated at the start of every run.
@@ -294,18 +206,15 @@ environment. CI runs the same commands against a MySQL 8 service container.
 - **Locking by row lock, not by convention.** Every write to payroll inputs takes
   `SELECT ... FOR UPDATE` on the matching period row inside its transaction. Approval takes the
   same lock, so "write lands after approval" is impossible rather than unlikely.
-- **CSV import: validate all, insert valid rows in one transaction.** Users get every row error
-  in one response and can fix and re-upload only the failed rows. Because the valid rows are
-  inserted atomically, an unexpected failure leaves nothing half-imported; the whole file can be
-  sent again. Duplicate rows within the file and rows that already exist are reported, not
-  overwritten.
 - **Pull-based outbox.** The API never calls n8n. Delivery is at least once; consumers
   de-duplicate on the event id. This keeps payroll approval independent of any external system.
 - **Rest-day overtime limits.** PP 35/2021 caps overtime at 4 h/day and 18 h/week but pays rest
   day overtime up to the 12th hour. This API applies the 4 h / 18 h caps to workdays and a
   12 h/day cap to rest days and holidays, in one place (`OvertimeLimitCheck`).
-- **Manual wiring and plain SQL.** A small hand-written container and SQL files instead of a DI
-  framework and an ORM. More typing, but nothing is hidden.
+
+Two smaller decisions (all-or-nothing CSV import of the valid rows, manual wiring with plain SQL)
+are in [docs/architecture.md](docs/architecture.md#further-design-decisions). Every payroll
+formula, with a worked example, is in [docs/payroll-rules.md](docs/payroll-rules.md).
 
 ## Limitations and future work
 
@@ -323,3 +232,9 @@ environment. CI runs the same commands against a MySQL 8 service container.
 - Access tokens cannot be revoked before they expire (15 minutes); logout revokes the refresh
   token family.
 - The outbox has no retention job; acknowledged events stay in the table.
+
+## Part of a portfolio
+
+[omnichannel-inbox-automation](https://github.com/__GITHUB_USER__/omnichannel-inbox-automation)
+polls this API's outbox and sends each employee a WhatsApp template message when a payslip is
+published or salary is paid. That is the only runtime integration; the API does not depend on it.

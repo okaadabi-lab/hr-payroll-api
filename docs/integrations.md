@@ -9,7 +9,7 @@ rolled back, and an approval can never be committed without its events.
 Consumers pull events over HTTP and acknowledge them. The intended consumer is the n8n
 project [omnichannel-inbox-automation](https://github.com/__GITHUB_USER__/omnichannel-inbox-automation)
 (a separate repository), which sends each
-employee a WhatsApp or email message when their payslip is published and when salary is paid.
+employee a WhatsApp template message when their payslip is published and when salary is paid.
 
 ## Authentication
 
