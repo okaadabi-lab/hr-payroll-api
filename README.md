@@ -253,7 +253,7 @@ Seeded users all use the password `Password123!`:
 
 | Variable | Purpose |
 | --- | --- |
-| `APP_ENV`, `APP_DEBUG` | `APP_DEBUG=true` adds exception class and message to 500 responses (never the trace) |
+| `APP_ENV`, `APP_DEBUG` | `bin/seed` and `bin/migrate --fresh` refuse to run when `APP_ENV=production`. `APP_DEBUG=true` adds exception class and message to 500 responses (never the trace) |
 | `APP_URL` | Base URL used in `payslip_url` of outbox events |
 | `APP_TIMEZONE` | Company time zone for clock-in/out (default `Asia/Jakarta`); storage is UTC |
 | `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Database connection |
