@@ -233,7 +233,11 @@ JHT employee:       15,000,000 x 2 %                  = 300,000   (no cap)
 - **PPh 21 income tax** is not calculated. A real payroll must add it (TER rates since 2024,
   annual reconciliation in December, PTKP status); producing a plausible-looking but wrong
   tax figure would be worse than leaving it out.
-- Pro-rating for employees who join or leave mid-month (they are paid the full month).
+- Pro-rating for employees who join or leave mid-month. An employee is included when their
+  status is `active` and they were hired on or before the last day of the month, and is
+  then paid the full month. Deactivate a leaver only after their final payroll is approved.
+- Effective-dated salaries. A calculation uses the salary on the employee record at the
+  time it runs; approved payslips keep their own copy and do not change.
 - Non-fixed allowances, THR (religious holiday allowance), bonuses, loans, and BPJS
   Kesehatan for additional family members.
 - The BPJS minimum wage base (contributions below the regional minimum wage).

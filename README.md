@@ -268,7 +268,7 @@ The integration tests need an empty database whose name ends in `_test` (the boo
 anything else). It is dropped and migrated at the start of every run.
 
 ```bash
-DB_USERNAME=... DB_PASSWORD=... composer test     # 153 tests: unit + integration (hr_payroll_test)
+DB_USERNAME=... DB_PASSWORD=... composer test     # 158 tests: unit + integration (hr_payroll_test)
 composer lint                                     # PHPCS (PSR-12) + PHPStan level 8
 ```
 
@@ -311,8 +311,9 @@ environment. CI runs the same commands against a MySQL 8 service container.
 - **BPJS caps change every year.** The seed uses a JP wage cap of 10,547,400 (in force since
   March 2025) and a Kesehatan cap of 12,000,000. Update `bpjs_settings` from the official BPJS announcement before the first
   payroll each year. JKK is seeded at the lowest risk-group rate (0.24 %).
-- No pro-rating for employees who join or leave mid-month, no THR, bonuses or loans, five-day
-  week only.
+- No pro-rating for employees who join or leave mid-month, no effective-dated salary changes,
+  no THR, bonuses or loans, five-day week only. Inactive employees are left out of a
+  calculation entirely, so deactivate leavers after their final payroll.
 - Public holidays are entered manually; the seed contains a subset of 2026 holidays.
 - Payslips are JSON only, no PDF.
 - Rate limiting covers login only. Other endpoints would need a limiter at the gateway.

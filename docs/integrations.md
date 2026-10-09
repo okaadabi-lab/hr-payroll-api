@@ -106,16 +106,21 @@ before sending).
 ## Recommended polling loop (n8n)
 
 1. **Schedule Trigger** every 5 minutes.
-2. **HTTP Request** `GET /api/v1/integrations/outbox?limit=50` with header `X-Api-Key` from
-   n8n credentials.
+2. **HTTP Request** `GET /api/v1/integrations/outbox?after=0&limit=50` with header `X-Api-Key`
+   from n8n credentials. While a page comes back full, request the next one with
+   `after={meta.next_after}`.
 3. **Split Out** `data`.
 4. **Switch** on `type` and send the message (WhatsApp / email node).
 5. **Aggregate** the ids of the messages that were sent successfully.
 6. **HTTP Request** `POST /api/v1/integrations/outbox/ack` with `{ "ids": [...] }`.
-7. If `meta.pending_total` was larger than the page, loop back to step 2.
 
 Only ack after the message was handed to the provider. Failed sends stay unacked and are
 retried on the next run.
+
+Start every run from `after=0` rather than storing a cursor between runs. Unacked events
+from earlier runs then come back automatically, and an event id is never skipped: ids are
+assigned when a row is inserted, so a transaction that commits later can still make a
+lower id visible after a higher one was already read.
 
 ## Error responses
 

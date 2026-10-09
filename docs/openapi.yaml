@@ -766,8 +766,13 @@ paths:
         - $ref: '#/components/parameters/PerPage'
         - $ref: '#/components/parameters/Period'
         - $ref: '#/components/parameters/Search'
+        - name: department
+          in: query
+          description: Department name as stored on the payslip.
+          schema: { type: string }
         - name: sort
           in: query
+          description: 'Fields: employee, net_pay, period, employee_number.'
           schema: { type: string, default: -period }
       responses:
         '200': { $ref: '#/components/responses/Paginated' }
@@ -1195,8 +1200,8 @@ components:
       required: [status]
       properties:
         status: { $ref: '#/components/schemas/AttendanceStatus' }
-        clock_in: { type: [string, 'null'], pattern: '^[0-2][0-9]:[0-5][0-9]$' }
-        clock_out: { type: [string, 'null'], pattern: '^[0-2][0-9]:[0-5][0-9]$' }
+        clock_in: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$' }
+        clock_out: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?$' }
         note: { type: [string, 'null'], maxLength: 255 }
 
     ImportReport:
