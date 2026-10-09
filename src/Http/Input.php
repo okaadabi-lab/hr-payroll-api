@@ -125,7 +125,7 @@ final class Input
     }
 
     /**
-     * Hours as a JSON number in steps of 0.5, returned as whole minutes.
+     * Hours as a JSON number in steps of 0.5 (at most 24), returned as whole minutes.
      */
     public function hoursAsMinutes(string $field): ?int
     {
@@ -137,8 +137,8 @@ final class Input
             return $this->fail($field, 'Must be a number of hours.');
         }
         $halfHours = $value * 2;
-        if ($value <= 0 || $halfHours != floor($halfHours)) {
-            return $this->fail($field, 'Must be a positive number of hours in steps of 0.5.');
+        if ($value <= 0 || $value > 24 || $halfHours != floor($halfHours)) {
+            return $this->fail($field, 'Must be a positive number of hours, at most 24, in steps of 0.5.');
         }
 
         return (int) ($halfHours * 30);

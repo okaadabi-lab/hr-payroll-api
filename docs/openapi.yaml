@@ -524,7 +524,7 @@ paths:
               properties:
                 employee_id: { type: integer }
                 work_date: { type: string, format: date }
-                hours: { type: number, multipleOf: 0.5, exclusiveMinimum: 0 }
+                hours: { type: number, multipleOf: 0.5, exclusiveMinimum: 0, maximum: 24 }
                 reason: { type: string, minLength: 3, maxLength: 500 }
       responses:
         '201':

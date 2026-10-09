@@ -93,6 +93,16 @@ final class OvertimeTest extends IntegrationTestCase
         $this->assertStatus(422, $this->submit('budi', '2026-09-07', 0));
     }
 
+    public function testAbsurdHoursAreRejectedBeforeConversionToMinutes(): void
+    {
+        foreach ([24.5, 1e20, -3] as $hours) {
+            $response = $this->submit('budi', '2026-09-12', $hours);
+            $this->assertStatus(422, $response);
+            self::assertSame('The request contains invalid data.', $this->json($response)['detail']);
+        }
+        self::assertSame(0, $this->db->fetchInt('SELECT COUNT(*) FROM overtime_requests'));
+    }
+
     public function testDirectManagerApproves(): void
     {
         $id = $this->submitted('budi', '2026-09-07', 2);
