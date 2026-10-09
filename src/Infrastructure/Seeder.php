@@ -126,6 +126,7 @@ final class Seeder
 
     /**
      * Caps change every year; update them from the official BPJS announcement.
+     * The JP cap rises each March, which the two JP rows show.
      */
     private function bpjs(): void
     {
@@ -145,5 +146,12 @@ final class Seeder
                 'effective_from' => '2025-01-01',
             ]);
         }
+        $this->db->insert('bpjs_settings', [
+            'program' => 'jp',
+            'employee_rate_bp' => 100,
+            'employer_rate_bp' => 200,
+            'wage_cap' => 10_547_400,
+            'effective_from' => '2025-03-01',
+        ]);
     }
 }

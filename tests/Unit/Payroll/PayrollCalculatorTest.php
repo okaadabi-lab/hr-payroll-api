@@ -23,7 +23,7 @@ final class PayrollCalculatorTest extends TestCase
     /**
      * @return array<string, BpjsRate>
      */
-    public static function bpjsRates(int $jpCap = 10_042_300): array
+    public static function bpjsRates(int $jpCap = 10_547_400): array
     {
         return [
             'kesehatan' => new BpjsRate(BpjsProgram::Kesehatan, 100, 400, 12_000_000),
@@ -108,8 +108,8 @@ final class PayrollCalculatorTest extends TestCase
 
         self::assertSame(120_000, self::amount($payslip, 'bpjs_kesehatan_employee'));
         self::assertSame(480_000, self::amount($payslip, 'bpjs_kesehatan_employer'));
-        self::assertSame(100_423, self::amount($payslip, 'bpjs_jp_employee'));
-        self::assertSame(200_846, self::amount($payslip, 'bpjs_jp_employer'));
+        self::assertSame(105_474, self::amount($payslip, 'bpjs_jp_employee'));
+        self::assertSame(210_948, self::amount($payslip, 'bpjs_jp_employer'));
         self::assertSame(300_000, self::amount($payslip, 'bpjs_jht_employee'), 'JHT has no cap');
         self::assertSame(555_000, self::amount($payslip, 'bpjs_jht_employer'));
         self::assertSame(36_000, self::amount($payslip, 'bpjs_jkk_employer'));

@@ -181,7 +181,7 @@ final class PayrollLifecycleTest extends PayrollTestCase
         $this->calculate($september);
 
         $raka = static fn (array $p): int => array_column($p['lines'], 'amount', 'code')['bpjs_jp_employee'];
-        self::assertSame(100_423, $raka($this->payslipFor($august, $this->ids['emp_raka'])));
+        self::assertSame(105_474, $raka($this->payslipFor($august, $this->ids['emp_raka'])));
         self::assertSame(110_000, $raka($this->payslipFor($september, $this->ids['emp_raka'])));
     }
 

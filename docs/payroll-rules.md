@@ -101,7 +101,7 @@ uses the rates that applied to it.
 | --- | --- | --- | --- |
 | Kesehatan (health) | 1 % | 4 % | 12,000,000 |
 | JHT (old-age savings) | 2 % | 3.7 % | none |
-| JP (pension) | 1 % | 2 % | 10,042,300 |
+| JP (pension) | 1 % | 2 % | 10,547,400 (since March 2025) |
 | JKK (work accident) | none | 0.24 % | none |
 | JKM (death) | none | 0.3 % | none |
 
@@ -113,9 +113,10 @@ share             = contribution_base x rate_bp / 10000
 Employee shares are payslip **deductions**. Employer shares are **employer_contribution**
 lines: they appear on the payslip for transparency but do not change net pay.
 
-**Caps change every year** (the JP cap in particular is adjusted annually). Add a new
+**Caps change every year** (the JP cap is adjusted every March). Add a new
 `bpjs_settings` row from the official BPJS announcement before running the first payroll
-that it applies to. The JKK rate of 0.24 % is the lowest risk group; companies in higher
+that it applies to. The seed shows this with two JP rows: 10,042,300 from January 2025 and
+10,547,400 from March 2025. The JKK rate of 0.24 % is the lowest risk group; companies in higher
 risk groups pay up to 1.74 % and must configure their own rate.
 
 ## Totals
@@ -223,7 +224,7 @@ calculated on the full monthly wage, not on the wage after deductions.
 
 ```
 Kesehatan employee: min(15,000,000, 12,000,000) x 1 % = 120,000
-JP employee:        min(15,000,000, 10,042,300) x 1 % = 100,423
+JP employee:        min(15,000,000, 10,547,400) x 1 % = 105,474
 JHT employee:       15,000,000 x 2 %                  = 300,000   (no cap)
 ```
 

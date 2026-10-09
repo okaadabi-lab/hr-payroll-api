@@ -308,8 +308,8 @@ environment. CI runs the same commands against a MySQL 8 service container.
 
 - **PPh 21 income tax is not calculated.** Net pay here is gross pay minus absence and employee
   BPJS shares. A real payroll must add PPh 21 (TER monthly rates, December reconciliation, PTKP).
-- **BPJS caps change every year.** The seed uses a JP wage cap of 10,042,300 and a Kesehatan cap
-  of 12,000,000. Update `bpjs_settings` from the official BPJS announcement before the first
+- **BPJS caps change every year.** The seed uses a JP wage cap of 10,547,400 (in force since
+  March 2025) and a Kesehatan cap of 12,000,000. Update `bpjs_settings` from the official BPJS announcement before the first
   payroll each year. JKK is seeded at the lowest risk-group rate (0.24 %).
 - No pro-rating for employees who join or leave mid-month, no THR, bonuses or loans, five-day
   week only.
