@@ -1,5 +1,7 @@
 # HR Payroll API
 
+[![CI](https://github.com/__GITHUB_USER__/hr-payroll-api/actions/workflows/ci.yml/badge.svg)](https://github.com/__GITHUB_USER__/hr-payroll-api/actions/workflows/ci.yml)
+
 REST API for attendance, overtime approval and monthly payroll runs under Indonesian rules
 (PP 35/2021 overtime multipliers, BPJS contributions), with period locking, an audit trail
 and a transactional outbox for integrations.
@@ -10,9 +12,10 @@ Portfolio project. All data in this repository is fictional sample data.
 
 A small service business pays its staff monthly. Attendance is recorded daily, overtime has to
 be approved by the employee's manager and must respect legal limits, and once payroll is
-approved nobody should be able to change the inputs that produced it. Other systems (here an
-n8n workflow that messages employees) need to know when payslips are published, without the
-payroll API calling them directly.
+approved nobody should be able to change the inputs that produced it. Other systems (here the
+n8n workflows in [omnichannel-inbox-automation](https://github.com/__GITHUB_USER__/omnichannel-inbox-automation),
+which message employees) need to know when payslips are published, without the payroll API
+calling them directly.
 
 This API covers that flow:
 

@@ -7,7 +7,8 @@ committed or none of it is, so a consumer can never see an event for an approval
 rolled back, and an approval can never be committed without its events.
 
 Consumers pull events over HTTP and acknowledge them. The intended consumer is the n8n
-project `omnichannel-inbox-automation` (a separate repository), which sends each
+project [omnichannel-inbox-automation](https://github.com/__GITHUB_USER__/omnichannel-inbox-automation)
+(a separate repository), which sends each
 employee a WhatsApp or email message when their payslip is published and when salary is paid.
 
 ## Authentication
@@ -100,8 +101,8 @@ Content-Type: application/json
 
 Delivery is **at least once**. If the consumer sends a message and crashes before acking,
 the event is returned again on the next poll. Consumers must therefore de-duplicate on the
-event `id` (n8n: keep the last processed id in workflow static data, or check a small table
-before sending).
+event `id`, for example by recording every id in a small table before sending. A single
+"last processed id" is not enough: failed events stay behind it and are retried later.
 
 ## Recommended polling loop (n8n)
 
