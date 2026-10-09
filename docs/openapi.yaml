@@ -256,7 +256,7 @@ paths:
           schema: { type: integer }
         - name: sort
           in: query
-          description: 'Fields: name, employee_number, hired_at, base_salary, created_at. Prefix with - for descending; comma separated.'
+          description: 'Fields: name, employee_number, hired_at, base_salary (admin and hr only), created_at. Prefix with - for descending; comma separated.'
           schema: { type: string, default: name }
       responses:
         '200': { $ref: '#/components/responses/Paginated' }

@@ -35,6 +35,11 @@ final class EmployeeService
      */
     public function list(Principal $actor, ListQuery $query): Page
     {
+        // Salaries are hidden from managers, so sorting by them would still leak the ranking.
+        $sortsBySalary = in_array(EmployeeRepository::SORTABLE['base_salary'], array_column($query->orderBy, 0), true);
+        if ($actor->role === Role::Manager && $sortsBySalary) {
+            throw ValidationFailed::single('sort', 'Managers cannot sort employees by salary.');
+        }
         $page = $this->employees->list($query, EmployeeScope::for($actor));
 
         return new Page(array_map(fn (array $row): array => $this->present($actor, $row), $page->items), $page->total);

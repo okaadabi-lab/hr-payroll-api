@@ -61,6 +61,16 @@ final class AccessControlTest extends IntegrationTestCase
         self::assertSame(15_000_000, $self['base_salary']);
     }
 
+    public function testManagerCannotRankReportsBySalary(): void
+    {
+        foreach (['base_salary', '-base_salary', 'name,base_salary'] as $sort) {
+            $response = $this->get("/api/v1/employees?sort={$sort}", 'dina');
+            $this->assertStatus(422, $response);
+            self::assertSame('sort', $this->json($response)['errors'][0]['field']);
+        }
+        $this->assertStatus(200, $this->get('/api/v1/employees?sort=-base_salary', 'hr'));
+    }
+
     public function testScopeAlsoAppliesToAttendanceAndOvertimeLists(): void
     {
         foreach (['emp_budi', 'emp_nina'] as $employee) {
